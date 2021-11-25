@@ -7,8 +7,7 @@ import 'package:flutter_blue/flutter_blue.dart';
 
 class BluetoothBleStompClient {
   BluetoothBleStompClient(
-      {required this.writeCharacteristic,
-      required this.readCharacteristic}) {
+      {required this.writeCharacteristic, required this.readCharacteristic}) {
     readCharacteristic.setNotifyValue(true);
   }
 
@@ -23,22 +22,22 @@ class BluetoothBleStompClient {
     return await readCharacteristic.read();
   }
 
-  void send(
+  Future<void> send(
       {required String command,
       required Map<String, String> headers,
       String? body,
-      Function? callback}) {
+      Function? callback}) async {
     BluetoothBleStompClientFrame newFrame = BluetoothBleStompClientFrame(
         command: command, headers: headers, body: body);
-    _rawSend(str: newFrame.result, callback: callback);
+    await _rawSend(str: newFrame.result, callback: callback);
   }
 
-  void sendFrame(dynamic frame) {
-    _rawSend(str: frame.result);
+  Future<void> sendFrame(dynamic frame) async {
+    await _rawSend(str: frame.result);
   }
 
-  void _rawSend({required String str, Function? callback}) {
-    writeCharacteristic.write(stringToBytes(str: str));
+  Future<void> _rawSend({required String str, Function? callback}) async {
+    await writeCharacteristic.write(stringToBytes(str: str));
     if (callback != null) {
       callback();
     }
