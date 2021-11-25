@@ -33,6 +33,10 @@ class BluetoothBleStompClient {
     _rawSend(str: newFrame.result, callback: callback);
   }
 
+  void sendFrame(dynamic frame) {
+    _rawSend(str: frame.result);
+  }
+
   void _rawSend({required String str, Function? callback}) {
     writeCharacteristic.write(stringToBytes(str: str));
     if (callback != null) {
