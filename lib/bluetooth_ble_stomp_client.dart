@@ -5,61 +5,115 @@ import 'dart:convert';
 import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_frame.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 
+/// A simple Bluetooth BLE STOMP client implementation.
 class BluetoothBleStompClient {
   BluetoothBleStompClient(
       {required this.writeCharacteristic,
       required this.readCharacteristic,
-      this.actionDelay}) {
-    readCharacteristic.setNotifyValue(true);
-  }
+      this.actionDelay,
+      this.consecutiveAttempts});
 
   final BluetoothCharacteristic writeCharacteristic;
   final BluetoothCharacteristic readCharacteristic;
   Duration? actionDelay;
+  int? consecutiveAttempts;
 
+  /// Convert a String to a bytes.
   static List<int> stringToBytes({required String str}) {
     return utf8.encode(str);
   }
 
-  Future<List<int>> read(Duration? delay) async {
+  /// Read from the readCharacteristic.
+  Future<List<int>> read({Duration? delay, int? attempts}) async {
     if (actionDelay != null) {
-      Future.delayed(actionDelay!);
+      await Future.delayed(actionDelay!);
     } else if (delay != null) {
-      Future.delayed(delay);
+      await Future.delayed(delay);
     }
+
+    if (attempts != null) {
+      for (int i = 0; i <= attempts; i++) {
+        try {
+          return await readCharacteristic.read();
+        } catch (e) {
+          if (i == attempts) {
+            rethrow;
+          }
+        }
+      }
+    } else if (consecutiveAttempts != null) {
+      for (int i = 0; i <= consecutiveAttempts!; i++) {
+        try {
+          return await readCharacteristic.read();
+        } catch (e) {
+          if (i == attempts) {
+            rethrow;
+          }
+        }
+      }
+    }
+
     return await readCharacteristic.read();
   }
 
+  /// Construct a custom frame and write to the writeCharacteristic.
   Future<void> send(
       {required String command,
       required Map<String, String> headers,
       String? body,
-      Function? callback,
-      Duration? delay}) async {
+      Duration? delay,
+      int? attempts}) async {
     BluetoothBleStompClientFrame newFrame = BluetoothBleStompClientFrame(
         command: command, headers: headers, body: body);
-    await _rawSend(str: newFrame.result, callback: callback, delay: delay);
+    await _rawSend(str: newFrame.result, delay: delay, attempts: attempts);
   }
 
+  /// Send a frame by writing to the writeCharacteristic.
   Future<void> sendFrame(
-      {required dynamic frame, Function? callback, Duration? delay}) async {
-    await _rawSend(str: frame.result, callback: callback, delay: delay);
+      {required dynamic frame, Duration? delay, int? attempts}) async {
+    await _rawSend(str: frame.result, delay: delay, attempts: attempts);
   }
 
+  /// Send a String by writing to the writeCharacteristic.
+  ///
+  /// Note that writeCharacteristic uses CharacteristicWriteType.withoutResponse
+  /// because it often causes more trouble than it is worth.
+  ///
+  /// Therefore, the user should rather rely on explicit responses from the
+  /// server for confirmation or acknowledgement.
   Future<void> _rawSend(
-      {required String str, Function? callback, Duration? delay}) async {
+      {required String str, Duration? delay, int? attempts}) async {
     if (actionDelay != null) {
-      Future.delayed(actionDelay!);
+      await Future.delayed(actionDelay!);
     } else if (delay != null) {
-      Future.delayed(delay);
+      await Future.delayed(delay);
     }
-    await writeCharacteristic.write(
-        stringToBytes(
-          str: str,
-        ),
-        withoutResponse: false);
-    if (callback != null) {
-      callback();
+
+    if (attempts != null) {
+      for (int i = 0; i <= attempts; i++) {
+        try {
+          return await writeCharacteristic.write(stringToBytes(str: str),
+              withoutResponse: true);
+        } catch (e) {
+          if (i == attempts) {
+            rethrow;
+          }
+        }
+      }
+    } else if (consecutiveAttempts != null) {
+      for (int i = 0; i <= consecutiveAttempts!; i++) {
+        try {
+          return await writeCharacteristic.write(stringToBytes(str: str),
+              withoutResponse: true);
+        } catch (e) {
+          if (i == attempts) {
+            rethrow;
+          }
+        }
+      }
     }
+
+    return await writeCharacteristic.write(stringToBytes(str: str),
+        withoutResponse: true);
   }
 }
