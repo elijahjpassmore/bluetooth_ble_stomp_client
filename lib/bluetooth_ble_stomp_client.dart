@@ -34,7 +34,7 @@ class BluetoothBleStompClient {
     if (attempts != null) {
       for (int i = 0; i <= attempts; i++) {
         try {
-          return await readCharacteristic.read();
+          List<int> data = await readCharacteristic.read();
         } catch (e) {
           if (i == attempts) {
             rethrow;

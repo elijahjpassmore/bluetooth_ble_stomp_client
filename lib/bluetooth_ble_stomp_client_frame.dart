@@ -1,5 +1,7 @@
 library bluetooth_ble_stomp_client;
 
+import 'dart:convert';
+
 import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_response_exception.dart';
 
 /// A STOMP frame.
@@ -18,11 +20,15 @@ class BluetoothBleStompClientFrame {
         constructFrameResult(receipt: command, headers: headers, body: body);
   }
 
+  /// Create a STOMP frame from bytes.
+  BluetoothBleStompClientFrame.fromBytes({required List<int> bytes}) {
+    BluetoothBleStompClientFrame.fromString(str: utf8.decode(bytes));
+  }
+
   /// Create a STOMP frame from a string.
   BluetoothBleStompClientFrame.fromString({required String str}) {
     if (str.isEmpty || str == '') {
-      throw BluetoothBleStompClientResponseException(
-          message: 'Frame is empty');
+      throw BluetoothBleStompClientResponseException(message: 'Frame is empty');
     }
     List<String> lines = str.split('\n');
 
@@ -65,8 +71,8 @@ class BluetoothBleStompClientFrame {
   /// Construct thr result of a given receipt, headers and body.
   static String constructFrameResult(
       {required String receipt,
-        required Map<String, String> headers,
-        String? body}) {
+      required Map<String, String> headers,
+      String? body}) {
     String result = '$receipt\n';
 
     for (String key in headers.keys) {
