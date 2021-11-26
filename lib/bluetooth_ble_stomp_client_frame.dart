@@ -22,11 +22,7 @@ class BluetoothBleStompClientFrame {
 
   /// Create a STOMP frame from bytes.
   BluetoothBleStompClientFrame.fromBytes({required List<int> bytes}) {
-    BluetoothBleStompClientFrame.fromString(str: utf8.decode(bytes));
-  }
-
-  /// Create a STOMP frame from a string.
-  BluetoothBleStompClientFrame.fromString({required String str}) {
+    String str = utf8.decode(bytes);
     if (str.isEmpty || str == '') {
       throw BluetoothBleStompClientResponseException(message: 'Frame is empty');
     }
