@@ -62,7 +62,7 @@ class BluetoothBleStompClient {
   /// Check to see if the latest read response is null.
   Future<bool> nullRead({Duration? delay, int? attempts}) async {
     List<int> response = await read(delay: delay, attempts: attempts);
-    if (response == nullResponse) {
+    if (utf8.decode(response) == utf8.decode(nullResponse)) {
       return true;
     }
 
