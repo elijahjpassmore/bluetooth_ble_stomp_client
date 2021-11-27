@@ -7,6 +7,9 @@ import 'package:flutter_blue/flutter_blue.dart';
 
 /// A simple Bluetooth BLE STOMP client implementation.
 class BluetoothBleStompClient {
+  /// A null response.
+  static List<int> nullResponse = [00];
+
   BluetoothBleStompClient(
       {required this.writeCharacteristic,
       required this.readCharacteristic,
@@ -54,6 +57,16 @@ class BluetoothBleStompClient {
     }
 
     return await readCharacteristic.read();
+  }
+
+  /// Check to see if the latest read response is null.
+  Future<bool> nullRead({Duration? delay, int? attempts}) async {
+    List<int> response = await read(delay: delay, attempts: attempts);
+    if (response == nullResponse) {
+      return true;
+    }
+
+    return false;
   }
 
   /// Construct a custom frame and write to the writeCharacteristic.
