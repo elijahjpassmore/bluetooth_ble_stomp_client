@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_frame.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 
-/// A simple Bluetooth BLE STOMP client implementation.
+/// A simple BLE STOMP client.
 class BluetoothBleStompClient {
   /// A null response.
   static List<int> nullResponse = [00];
