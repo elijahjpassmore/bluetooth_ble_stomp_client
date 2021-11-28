@@ -26,6 +26,11 @@ class BluetoothBleStompClient {
     return utf8.encode(str);
   }
 
+  /// Convert bytes to a String.
+  static String bytesToString({required List<int> bytes}) {
+    return utf8.decode(bytes);
+  }
+
   /// Read from the readCharacteristic.
   Future<List<int>> read({Duration? delay, int? attempts}) async {
     if (actionDelay != null) {
