@@ -9,6 +9,7 @@ import 'package:flutter_blue/flutter_blue.dart';
 class BluetoothBleStompClient {
   /// A null response.
   static List<int> nullResponse = [00];
+  static List<int> warningResponse = [07];
 
   BluetoothBleStompClient(
       {required this.writeCharacteristic,
@@ -67,7 +68,18 @@ class BluetoothBleStompClient {
   /// Check to see if the latest read response is null.
   Future<bool> nullRead({Duration? delay, int? attempts}) async {
     List<int> response = await read(delay: delay, attempts: attempts);
-    if (utf8.decode(response) == utf8.decode(nullResponse)) {
+    if (bytesToString(bytes: response) == bytesToString(bytes: nullResponse)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Check to see if the latest read response is a warning.
+  Future<bool> warningRead({Duration? delay, int? attempts}) async {
+    List<int> response = await read(delay: delay, attempts: attempts);
+    if (bytesToString(bytes: response) ==
+        bytesToString(bytes: warningResponse)) {
       return true;
     }
 
