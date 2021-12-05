@@ -54,6 +54,7 @@ class BluetoothBleStompClientFrame {
       buf.write(lines[i]);
     }
     body = buf.toString();
+    bodyReadable = body?.replaceAll('\u0000', '');
 
     result =
         constructFrameResult(receipt: command, headers: headers, body: body);
@@ -62,6 +63,7 @@ class BluetoothBleStompClientFrame {
   late final String command;
   Map<String, String> headers = {};
   late final String? body;
+  late final String? bodyReadable;
   String result = '';
 
   /// Construct thr result of a given receipt, headers and body.
