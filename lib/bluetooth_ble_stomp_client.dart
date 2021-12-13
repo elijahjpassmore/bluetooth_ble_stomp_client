@@ -4,7 +4,6 @@ import 'dart:convert';
 
 import 'package:bluetooth_ble_stomp_client/ble/ble_device_interactor.dart';
 import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_frame.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 /// A simple BLE STOMP client.
@@ -13,15 +12,16 @@ class BluetoothBleStompClient {
   static List<int> nullResponse = [00];
   static List<int> warningResponse = [07];
 
-  BluetoothBleStompClient({
-    required this.readCharacteristic,
-    required this.writeCharacteristic,
-    this.logMessage,
-    this.actionDelay}) {
-    _interactor = BleDeviceInteractor(ble: FlutterReactiveBle(),
+  BluetoothBleStompClient(
+      {required this.readCharacteristic,
+      required this.writeCharacteristic,
+      this.logMessage,
+      this.actionDelay}) {
+    _interactor = BleDeviceInteractor(
+        ble: FlutterReactiveBle(),
         readCharacteristic: readCharacteristic,
         writeCharacteristic: writeCharacteristic,
-        logMessage: (message) => debugPrint(message));
+        logMessage: logMessage ?? (message) => {});
   }
 
   final QualifiedCharacteristic readCharacteristic;
@@ -73,10 +73,11 @@ class BluetoothBleStompClient {
   }
 
   /// Construct a custom frame and write to the writeCharacteristic.
-  Future<void> send({required String command,
-    required Map<String, String> headers,
-    String? body,
-    Duration? delay}) async {
+  Future<void> send(
+      {required String command,
+      required Map<String, String> headers,
+      String? body,
+      Duration? delay}) async {
     BluetoothBleStompClientFrame newFrame = BluetoothBleStompClientFrame(
         command: command, headers: headers, body: body);
     await _rawSend(str: newFrame.result, delay: delay);
