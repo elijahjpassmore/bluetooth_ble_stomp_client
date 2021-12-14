@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
+/// Interact with a Bluetooth device.
 class BleDeviceInteractor {
   BleDeviceInteractor({
     required this.ble,
@@ -17,6 +18,7 @@ class BleDeviceInteractor {
 
   final void Function(String message) _logMessage;
 
+  /// Read a characteristic.
   Future<List<int>> read(QualifiedCharacteristic characteristic) async {
     try {
       final response = await ble.readCharacteristic(readCharacteristic);
@@ -30,6 +32,7 @@ class BleDeviceInteractor {
     }
   }
 
+  /// Write a characteristic without expecting a response.
   Future<void> writeWithoutResponse(
       QualifiedCharacteristic characteristic, List<int> value) async {
     try {
