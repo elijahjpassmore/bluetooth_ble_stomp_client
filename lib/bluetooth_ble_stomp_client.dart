@@ -96,7 +96,7 @@ class BluetoothBleStompClient {
       await Future.delayed(delay);
     }
 
-    return await _interactor.writeWithoutResponse(
+    return await _interactor.writeCharacterisiticWithResponse(
         writeCharacteristic, stringToBytes(str: str));
   }
 }
