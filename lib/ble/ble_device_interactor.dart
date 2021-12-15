@@ -32,14 +32,13 @@ class BleDeviceInteractor {
     }
   }
 
-  /// Write a characteristic without expecting a response.
-  Future<void> writeWithoutResponse(
+  /// Write a characteristic expecting a response.
+  Future<void> writeCharacterisiticWithResponse(
       QualifiedCharacteristic characteristic, List<int> value) async {
     try {
-      await ble.writeCharacteristicWithoutResponse(characteristic,
-          value: value);
       _logMessage(
-          'Write without response value: $value to ${characteristic.characteristicId}');
+          'Write with response value : $value to ${characteristic.characteristicId}');
+      await ble.writeCharacteristicWithResponse(characteristic, value: value);
     } on Exception catch (e) {
       _logMessage(
         'Error occured when writing ${characteristic.characteristicId} : $e',
