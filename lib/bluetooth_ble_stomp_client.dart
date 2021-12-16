@@ -64,7 +64,11 @@ class BluetoothBleStompClient {
   }
 
   /// Initialize the client.
-  Future<void> init() async {
+  Future<void> init({quickConnect = false}) async {
+    if (quickConnect == true) {
+      await connectDevice();
+    }
+
     if (connected == false) {
       if (logMessage != null) {
         logMessage!(
@@ -73,6 +77,7 @@ class BluetoothBleStompClient {
 
       return;
     }
+
     while (characteristicsFound == false) {
       await _findCharacteristics();
     }
@@ -121,13 +126,35 @@ class BluetoothBleStompClient {
   }
 
   /// Connect to the device.
-  Future<void> connectDevice() async {
+  Future<bool> connectDevice(
+      {connectTimeout = const Duration(seconds: 10)}) async {
     if (connected == true) {
       if (logMessage != null) {
         logMessage!("Device ${device.id} already connected");
       }
     }
     await _connector.connect(deviceId: device.id);
+
+    /// Keep the asynchronous method busy while the connection stream does not
+    /// indicate that the device has been connected.
+    await Future.doWhile(() async {
+      if (connected == true) {
+        return false;
+      } else {
+        /// Don't flood with too many checks at once.
+        await Future.delayed(const Duration(milliseconds: 100));
+        return true;
+      }
+
+      /// If the connection takes too long, time it out.
+    }).timeout(connectTimeout, onTimeout: () async {
+      if (logMessage != null) {
+        logMessage!('Device ${device.id} connection timed out');
+      }
+      await _connector.disconnect(deviceId: device.id);
+    });
+
+    return connected;
   }
 
   /// Disconnect from the device.
