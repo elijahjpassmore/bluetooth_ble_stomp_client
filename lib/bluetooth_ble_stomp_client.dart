@@ -2,7 +2,9 @@ library bluetooth_ble_stomp_client;
 
 import 'dart:convert';
 
-import 'package:bluetooth_ble_stomp_client/ble/ble_device_interactor.dart';
+import 'package:bluetooth_ble_stomp_client/ble/bluetooth_ble_stomp_client_device_connector.dart';
+import 'package:bluetooth_ble_stomp_client/ble/bluetooth_ble_stomp_client_device_finder.dart';
+import 'package:bluetooth_ble_stomp_client/ble/bluetooth_ble_stomp_client_device_interactor.dart';
 import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_frame.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
@@ -10,25 +12,46 @@ import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 class BluetoothBleStompClient {
   /// A null response.
   static List<int> nullResponse = [00];
+
+  /// A warning response.
   static List<int> warningResponse = [07];
 
   BluetoothBleStompClient(
-      {required this.readCharacteristic,
-      required this.writeCharacteristic,
+      {required this.device,
+      required this.serviceUuid,
+      required this.readCharacteristicUuid,
+      required this.writeCharacteristicUuid,
       this.logMessage,
       this.actionDelay}) {
-    _interactor = BleDeviceInteractor(
-        ble: FlutterReactiveBle(),
-        readCharacteristic: readCharacteristic,
-        writeCharacteristic: writeCharacteristic,
-        logMessage: logMessage ?? (message) => {});
+    _ble = FlutterReactiveBle();
+    _connector = BluetoothBleStompClientDeviceConnector(
+        ble: _ble, logMessage: logMessage ?? (message) {});
+    _finder = BluetoothBleStompClientDeviceFinder(
+        ble: _ble, logMessage: logMessage ?? (message) {}, device: device);
   }
 
-  final QualifiedCharacteristic readCharacteristic;
-  final QualifiedCharacteristic writeCharacteristic;
-  void Function(String)? logMessage;
+  late final FlutterReactiveBle _ble;
+
+  final DiscoveredDevice device;
+  final Uuid serviceUuid;
+  final Uuid readCharacteristicUuid;
+  final Uuid writeCharacteristicUuid;
+
+  QualifiedCharacteristic? readCharacteristic;
+  QualifiedCharacteristic? writeCharacteristic;
+  dynamic Function(String)? logMessage;
   Duration? actionDelay;
-  late final BleDeviceInteractor _interactor;
+
+  late final BluetoothBleStompClientDeviceConnector _connector;
+  late final BluetoothBleStompClientDeviceFinder _finder;
+  late final BluetoothBleStompClientDeviceInteractor _interactor;
+
+  bool get connected =>
+      _connector.latestUpdate?.connectionState ==
+      DeviceConnectionState.connected;
+
+  bool get characteristicsFound =>
+      (readCharacteristic != null && writeCharacteristic != null);
 
   /// Convert a String to a bytes.
   static List<int> stringToBytes({required String str}) {
@@ -40,15 +63,103 @@ class BluetoothBleStompClient {
     return utf8.decode(bytes);
   }
 
-  /// Read from the readCharacteristic.
+  /// Initialize the client.
+  Future<void> init() async {
+    if (connected == false) {
+      if (logMessage != null) {
+        logMessage!(
+            'Device ${device.id} must be connected before initialization');
+      }
+
+      return;
+    }
+    while (characteristicsFound == false) {
+      await _findCharacteristics();
+    }
+
+    /// When the characteristics have been found, the interactor can then be
+    /// created.
+    _interactor = BluetoothBleStompClientDeviceInteractor(
+        ble: _ble,
+        readCharacteristic: readCharacteristic!,
+        writeCharacteristic: writeCharacteristic!,
+        logMessage: logMessage ?? (message) {});
+  }
+
+  /// Find the expected read and write characteristics.
+  Future<void> _findCharacteristics() async {
+    if (connected == false) {
+      if (logMessage != null) {
+        logMessage!(
+            'Device ${device.id} must be connected before finding characteristics');
+      }
+
+      return;
+    }
+    List<DiscoveredCharacteristic> characteristics =
+        await _finder.discoverCharacteristics(serviceToInspect: serviceUuid);
+
+    for (DiscoveredCharacteristic characteristic in characteristics) {
+      /// If it's the expected read characteristic, mark it as discovered.
+      if (characteristic.isReadable &&
+          characteristic.characteristicId == readCharacteristicUuid) {
+        readCharacteristic = QualifiedCharacteristic(
+            characteristicId: characteristic.characteristicId,
+            serviceId: serviceUuid,
+            deviceId: device.id);
+
+        /// If it's the expected write characteristic, mark it as discovered.
+      } else if ((characteristic.isWritableWithResponse ||
+              characteristic.isWritableWithoutResponse) &&
+          characteristic.characteristicId == writeCharacteristicUuid) {
+        writeCharacteristic = QualifiedCharacteristic(
+            characteristicId: characteristic.characteristicId,
+            serviceId: serviceUuid,
+            deviceId: device.id);
+      }
+    }
+  }
+
+  /// Connect to the device.
+  Future<void> connectDevice() async {
+    if (connected == true) {
+      if (logMessage != null) {
+        logMessage!("Device ${device.id} already connected");
+      }
+    }
+    await _connector.connect(deviceId: device.id);
+  }
+
+  /// Disconnect from the device.
+  Future<void> disconnectDevice() async {
+    await _connector.disconnect(deviceId: device.id);
+  }
+
+  /// Read from the read characteristic.
   Future<List<int>> read({Duration? delay, int? attempts}) async {
+    if (connected == false) {
+      if (logMessage != null) {
+        logMessage!(
+            "Cannot read characteristic ${readCharacteristicUuid.toString()}: not connected");
+      }
+
+      return [];
+    }
+    if (characteristicsFound == false) {
+      if (logMessage != null) {
+        logMessage!(
+            "Cannot read characteristic ${readCharacteristicUuid.toString()}: characteristics not found");
+      }
+
+      return [];
+    }
     if (actionDelay != null) {
       await Future.delayed(actionDelay!);
     } else if (delay != null) {
       await Future.delayed(delay);
     }
 
-    return await _interactor.read(readCharacteristic);
+    return await _interactor.read(readCharacteristic!);
   }
 
   /// Check to see if the latest read response is null.
@@ -72,7 +183,7 @@ class BluetoothBleStompClient {
     return false;
   }
 
-  /// Construct a custom frame and write to the writeCharacteristic.
+  /// Construct a custom frame and write to the write characteristic.
   Future<void> send(
       {required String command,
       required Map<String, String> headers,
@@ -83,20 +194,36 @@ class BluetoothBleStompClient {
     await _rawSend(str: newFrame.result, delay: delay);
   }
 
-  /// Send a frame by writing to the writeCharacteristic.
+  /// Send a frame by writing to the write characteristic.
   Future<void> sendFrame({required dynamic frame, Duration? delay}) async {
     await _rawSend(str: frame.result, delay: delay);
   }
 
-  /// Send a String by writing to the writeCharacteristic.
+  /// Send a String by writing to the write characteristic.
   Future<void> _rawSend({required String str, Duration? delay}) async {
+    if (connected == false) {
+      if (logMessage != null) {
+        logMessage!(
+            "Cannot write characteristic ${readCharacteristicUuid.toString()}: not connected");
+      }
+
+      return;
+    }
+    if (characteristicsFound == false) {
+      if (logMessage != null) {
+        logMessage!(
+            "Cannot write characteristic ${readCharacteristicUuid.toString()}: characteristics not found");
+      }
+
+      return;
+    }
     if (actionDelay != null) {
       await Future.delayed(actionDelay!);
     } else if (delay != null) {
       await Future.delayed(delay);
     }
 
-    return await _interactor.writeCharacterisiticWithResponse(
-        writeCharacteristic, stringToBytes(str: str));
+    return await _interactor.writeCharacteristicWithResponse(
+        writeCharacteristic!, stringToBytes(str: str));
   }
 }
