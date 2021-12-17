@@ -46,4 +46,20 @@ class BluetoothBleStompClientDeviceInteractor {
       rethrow;
     }
   }
+
+  /// Write a characteristic without expecting a response.
+  Future<void> writeCharacteristicWithoutResponse(
+      QualifiedCharacteristic characteristic, List<int> value) async {
+    try {
+      _logMessage(
+          'Write without response value : $value to ${characteristic.characteristicId}');
+      await ble.writeCharacteristicWithoutResponse(characteristic,
+          value: value);
+    } on Exception catch (e) {
+      _logMessage(
+        'Error occured when writing ${characteristic.characteristicId} : $e',
+      );
+      rethrow;
+    }
+  }
 }

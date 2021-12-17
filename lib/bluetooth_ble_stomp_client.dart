@@ -28,6 +28,9 @@ class BluetoothBleStompClient {
         ble: _ble, logMessage: logMessage ?? (message) {});
     _finder = BluetoothBleStompClientDeviceFinder(
         ble: _ble, logMessage: logMessage ?? (message) {}, device: device);
+
+    /// Immediately begin listening for the state of the device connection.
+    _listenState();
   }
 
   late final FlutterReactiveBle _ble;
@@ -44,14 +47,21 @@ class BluetoothBleStompClient {
 
   late final BluetoothBleStompClientDeviceConnector _connector;
   late final BluetoothBleStompClientDeviceFinder _finder;
-  late final BluetoothBleStompClientDeviceInteractor _interactor;
+  BluetoothBleStompClientDeviceInteractor? _interactor;
 
+  /// Get the current state of the connection.
+  Stream<ConnectionStateUpdate> get state => _connector.state;
+
+  /// Check if the device is currently connected.
   bool get connected =>
       _connector.latestUpdate?.connectionState ==
       DeviceConnectionState.connected;
 
-  bool get characteristicsFound =>
-      (readCharacteristic != null && writeCharacteristic != null);
+  /// Check if the device is ready to read and write.
+  bool get readWriteReady => (readCharacteristic != null &&
+      writeCharacteristic != null &&
+      _interactor != null &&
+      connected == true);
 
   /// Convert a String to a bytes.
   static List<int> stringToBytes({required String str}) {
@@ -63,35 +73,45 @@ class BluetoothBleStompClient {
     return utf8.decode(bytes);
   }
 
-  /// Initialize the client.
-  Future<void> init({quickConnect = false}) async {
-    if (quickConnect == true) {
-      await connectDevice();
-    }
+  /// Listen to the state of the connection.
+  void _listenState() async {
+    state.listen((event) async {
+      /// Evaluate the new connection state.
+      switch (event.connectionState) {
+        case DeviceConnectionState.connected:
+          _resetData();
 
-    if (connected == false) {
-      if (logMessage != null) {
-        logMessage!(
-            'Device ${device.id} must be connected before initialization');
+          /// Attempt to find the necessary characteristics.
+          while (readWriteReady == false) {
+            await _findCharacteristics();
+
+            if (readCharacteristic != null && writeCharacteristic != null) {
+              _interactor = BluetoothBleStompClientDeviceInteractor(
+                  ble: _ble,
+                  readCharacteristic: readCharacteristic!,
+                  writeCharacteristic: writeCharacteristic!,
+                  logMessage: logMessage ?? (message) {});
+            } else {
+              /// If the characteristics aren't found, wait for a short period
+              /// before trying again.
+              await Future.delayed(const Duration(milliseconds: 500));
+            }
+          }
+          break;
       }
+    });
+  }
 
-      return;
-    }
-
-    while (characteristicsFound == false) {
-      await _findCharacteristics();
-    }
-
-    /// When the characteristics have been found, the interactor can then be
-    /// created.
-    _interactor = BluetoothBleStompClientDeviceInteractor(
-        ble: _ble,
-        readCharacteristic: readCharacteristic!,
-        writeCharacteristic: writeCharacteristic!,
-        logMessage: logMessage ?? (message) {});
+  void _resetData() {
+    readCharacteristic = null;
+    writeCharacteristic = null;
+    _interactor = null;
   }
 
   /// Find the expected read and write characteristics.
+  ///
+  /// The write characteristic found does not distinguish between a
+  /// characteristic expecting a response and one which does not.
   Future<void> _findCharacteristics() async {
     if (connected == false) {
       if (logMessage != null) {
@@ -164,15 +184,7 @@ class BluetoothBleStompClient {
 
   /// Read from the read characteristic.
   Future<List<int>> read({Duration? delay, int? attempts}) async {
-    if (connected == false) {
-      if (logMessage != null) {
-        logMessage!(
-            "Cannot read characteristic ${readCharacteristicUuid.toString()}: not connected");
-      }
-
-      return [];
-    }
-    if (characteristicsFound == false) {
+    if (readWriteReady == false) {
       if (logMessage != null) {
         logMessage!(
             "Cannot read characteristic ${readCharacteristicUuid.toString()}: characteristics not found");
@@ -186,7 +198,7 @@ class BluetoothBleStompClient {
       await Future.delayed(delay);
     }
 
-    return await _interactor.read(readCharacteristic!);
+    return await _interactor!.read(readCharacteristic!);
   }
 
   /// Check to see if the latest read response is null.
@@ -227,16 +239,9 @@ class BluetoothBleStompClient {
   }
 
   /// Send a String by writing to the write characteristic.
-  Future<void> _rawSend({required String str, Duration? delay}) async {
-    if (connected == false) {
-      if (logMessage != null) {
-        logMessage!(
-            "Cannot write characteristic ${readCharacteristicUuid.toString()}: not connected");
-      }
-
-      return;
-    }
-    if (characteristicsFound == false) {
+  Future<void> _rawSend(
+      {required String str, Duration? delay, bool withResponse = true}) async {
+    if (readWriteReady == false) {
       if (logMessage != null) {
         logMessage!(
             "Cannot write characteristic ${readCharacteristicUuid.toString()}: characteristics not found");
@@ -250,7 +255,12 @@ class BluetoothBleStompClient {
       await Future.delayed(delay);
     }
 
-    return await _interactor.writeCharacteristicWithResponse(
-        writeCharacteristic!, stringToBytes(str: str));
+    if (withResponse == true) {
+      return await _interactor!.writeCharacteristicWithResponse(
+          writeCharacteristic!, stringToBytes(str: str));
+    } else {
+      return await _interactor!.writeCharacteristicWithoutResponse(
+          writeCharacteristic!, stringToBytes(str: str));
+    }
   }
 }
