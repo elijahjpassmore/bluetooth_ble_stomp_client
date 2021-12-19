@@ -53,13 +53,13 @@ class BluetoothBleStompClientDeviceConnector
       _logMessage("Error disconnecting from a device: $e");
     } finally {
       // Since [_connection] subscription is terminated, the "disconnected" state cannot be received and propagated
-      _deviceConnectionController.add(
-        ConnectionStateUpdate(
+      ConnectionStateUpdate disconnectedUpdate = ConnectionStateUpdate(
           deviceId: deviceId,
           connectionState: DeviceConnectionState.disconnected,
-          failure: null,
-        ),
-      );
+          failure: null);
+
+      latestUpdate = disconnectedUpdate;
+      _deviceConnectionController.add(disconnectedUpdate);
     }
   }
 

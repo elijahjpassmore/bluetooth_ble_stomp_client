@@ -21,6 +21,7 @@ class BluetoothBleStompClient {
       required this.serviceUuid,
       required this.readCharacteristicUuid,
       required this.writeCharacteristicUuid,
+      this.stateCallback,
       this.logMessage,
       this.actionDelay}) {
     _ble = FlutterReactiveBle();
@@ -40,6 +41,8 @@ class BluetoothBleStompClient {
   final Uuid readCharacteristicUuid;
   final Uuid writeCharacteristicUuid;
 
+  Function(ConnectionStateUpdate)? stateCallback;
+
   QualifiedCharacteristic? readCharacteristic;
   QualifiedCharacteristic? writeCharacteristic;
   dynamic Function(String)? logMessage;
@@ -53,15 +56,14 @@ class BluetoothBleStompClient {
   Stream<ConnectionStateUpdate> get state => _connector.state;
 
   /// Check if the device is currently connected.
-  bool get connected =>
-      _connector.latestUpdate?.connectionState ==
-      DeviceConnectionState.connected;
+  DeviceConnectionState? get connectionState =>
+      _connector.latestUpdate?.connectionState;
 
   /// Check if the device is ready to read and write.
   bool get readWriteReady => (readCharacteristic != null &&
       writeCharacteristic != null &&
       _interactor != null &&
-      connected == true);
+      connectionState == DeviceConnectionState.connected);
 
   /// Convert a String to a bytes.
   static List<int> stringToBytes({required String str}) {
@@ -76,7 +78,16 @@ class BluetoothBleStompClient {
   /// Listen to the state of the connection.
   void _listenState() async {
     state.listen((event) async {
+      if (stateCallback != null) {
+        stateCallback!(event);
+      }
+
       /// Evaluate the new connection state.
+      ///
+      /// Use these cases to perform automatic actions upon changing connection
+      /// state.
+      ///
+      /// When connected, immediately find the characteristics of the service.
       switch (event.connectionState) {
         case DeviceConnectionState.connected:
           _resetData();
@@ -113,7 +124,7 @@ class BluetoothBleStompClient {
   /// The write characteristic found does not distinguish between a
   /// characteristic expecting a response and one which does not.
   Future<void> _findCharacteristics() async {
-    if (connected == false) {
+    if (connectionState != DeviceConnectionState.connected) {
       if (logMessage != null) {
         logMessage!(
             'Device ${device.id} must be connected before finding characteristics');
@@ -148,7 +159,7 @@ class BluetoothBleStompClient {
   /// Connect to the device.
   Future<bool> connectDevice(
       {connectTimeout = const Duration(seconds: 10)}) async {
-    if (connected == true) {
+    if (connectionState == DeviceConnectionState.connected) {
       if (logMessage != null) {
         logMessage!("Device ${device.id} already connected");
       }
@@ -158,7 +169,7 @@ class BluetoothBleStompClient {
     /// Keep the asynchronous method busy while the connection stream does not
     /// indicate that the device has been connected.
     await Future.doWhile(() async {
-      if (connected == true) {
+      if (connectionState == DeviceConnectionState.connected) {
         return false;
       } else {
         /// Don't flood with too many checks at once.
@@ -174,7 +185,11 @@ class BluetoothBleStompClient {
       await _connector.disconnect(deviceId: device.id);
     });
 
-    return connected;
+    if (connectionState == DeviceConnectionState.connected) {
+      return true;
+    }
+
+    return false;
   }
 
   /// Disconnect from the device.
