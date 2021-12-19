@@ -35,9 +35,9 @@ class BluetoothBleStompClientDeviceConnector
         _ble.connectToDevice(id: deviceId, connectionTimeout: timeout).listen(
       (update) {
         latestUpdate = update;
+        _deviceConnectionController.add(update);
         _logMessage(
             'ConnectionState for device $deviceId : ${update.connectionState}');
-        _deviceConnectionController.add(update);
       },
       onError: (Object e) =>
           _logMessage('Connecting to device $deviceId resulted in error $e'),
@@ -47,7 +47,7 @@ class BluetoothBleStompClientDeviceConnector
   /// Disconnect from a device.
   Future<void> disconnect({required String deviceId}) async {
     try {
-      _logMessage('disconnecting to device: $deviceId');
+      _logMessage('Disconnecting to device: $deviceId');
       await _connection.cancel();
     } on Exception catch (e, _) {
       _logMessage("Error disconnecting from a device: $e");
@@ -60,6 +60,9 @@ class BluetoothBleStompClientDeviceConnector
 
       latestUpdate = disconnectedUpdate;
       _deviceConnectionController.add(disconnectedUpdate);
+
+      _logMessage(
+          'ConnectionState for device $deviceId : ${disconnectedUpdate.connectionState}');
     }
   }
 
