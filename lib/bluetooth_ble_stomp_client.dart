@@ -41,13 +41,12 @@ class BluetoothBleStompClient {
   final Uuid serviceUuid;
   final Uuid readCharacteristicUuid;
   final Uuid writeCharacteristicUuid;
-
   Function(ConnectionStateUpdate)? stateCallback;
+  dynamic Function(String)? logMessage;
+  Duration? actionDelay;
 
   QualifiedCharacteristic? readCharacteristic;
   QualifiedCharacteristic? writeCharacteristic;
-  dynamic Function(String)? logMessage;
-  Duration? actionDelay;
 
   late final BluetoothBleStompClientDeviceConnector _connector;
   late final BluetoothBleStompClientDeviceFinder _finder;
@@ -74,6 +73,17 @@ class BluetoothBleStompClient {
   /// Convert bytes to a String.
   static String bytesToString({required List<int> bytes}) {
     return utf8.decode(bytes);
+  }
+
+  /// Discover all services on a device.
+  Future<List<DiscoveredService>> discoverServices() {
+    return _finder.discoverServices();
+  }
+
+  /// Discover the characteristics associated with a given service UUID on the
+  /// device.
+  Future<List<DiscoveredCharacteristic>> discoverCharacteristics(Uuid service) {
+    return _finder.discoverCharacteristics(serviceToInspect: service);
   }
 
   /// Listen to the state of the connection.
@@ -114,6 +124,7 @@ class BluetoothBleStompClient {
     });
   }
 
+  /// Reset the previously found data in case of a change.
   void _resetData() {
     readCharacteristic = null;
     writeCharacteristic = null;
