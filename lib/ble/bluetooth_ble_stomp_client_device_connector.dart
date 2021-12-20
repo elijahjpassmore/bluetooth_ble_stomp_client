@@ -29,10 +29,17 @@ class BluetoothBleStompClientDeviceConnector
   /// Does not use autoConnect.
   Future<void> connect(
       {required String deviceId,
-      Duration timeout = const Duration(seconds: 10)}) async {
+      required Uuid service,
+      Duration timeout = const Duration(seconds: 10),
+      Duration prescan = const Duration(seconds: 2)}) async {
     _logMessage('Start connecting to $deviceId');
-    _connection =
-        _ble.connectToDevice(id: deviceId, connectionTimeout: timeout).listen(
+    _connection = _ble
+        .connectToAdvertisingDevice(
+            id: deviceId,
+            withServices: [service],
+            prescanDuration: prescan,
+            connectionTimeout: timeout)
+        .listen(
       (update) {
         latestUpdate = update;
         _deviceConnectionController.add(update);

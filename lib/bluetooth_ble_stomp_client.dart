@@ -41,13 +41,12 @@ class BluetoothBleStompClient {
   final Uuid serviceUuid;
   final Uuid readCharacteristicUuid;
   final Uuid writeCharacteristicUuid;
-
   Function(ConnectionStateUpdate)? stateCallback;
+  dynamic Function(String)? logMessage;
+  Duration? actionDelay;
 
   QualifiedCharacteristic? readCharacteristic;
   QualifiedCharacteristic? writeCharacteristic;
-  dynamic Function(String)? logMessage;
-  Duration? actionDelay;
 
   late final BluetoothBleStompClientDeviceConnector _connector;
   late final BluetoothBleStompClientDeviceFinder _finder;
@@ -74,6 +73,17 @@ class BluetoothBleStompClient {
   /// Convert bytes to a String.
   static String bytesToString({required List<int> bytes}) {
     return utf8.decode(bytes);
+  }
+
+  /// Discover all services on a device.
+  Future<List<DiscoveredService>> discoverServices() {
+    return _finder.discoverServices();
+  }
+
+  /// Discover the characteristics associated with a given service UUID on the
+  /// device.
+  Future<List<DiscoveredCharacteristic>> discoverCharacteristics(Uuid service) {
+    return _finder.discoverCharacteristics(serviceToInspect: service);
   }
 
   /// Listen to the state of the connection.
@@ -114,6 +124,7 @@ class BluetoothBleStompClient {
     });
   }
 
+  /// Reset the previously found data in case of a change.
   void _resetData() {
     readCharacteristic = null;
     writeCharacteristic = null;
@@ -159,13 +170,14 @@ class BluetoothBleStompClient {
 
   /// Connect to the device.
   Future<bool> connectDevice(
-      {connectTimeout = const Duration(seconds: 10)}) async {
+      {connectTimeout = const Duration(seconds: 12)}) async {
     if (connectionState == DeviceConnectionState.connected) {
       if (logMessage != null) {
         logMessage!("Device ${device.id} already connected");
       }
     }
-    await _connector.connect(deviceId: device.id);
+    await _connector.connect(
+        deviceId: device.id, service: serviceUuid, timeout: connectTimeout);
 
     /// Keep the asynchronous method busy while the connection stream does not
     /// indicate that the device has been connected.
@@ -180,10 +192,12 @@ class BluetoothBleStompClient {
 
       /// If the connection takes too long, time it out.
     }).timeout(connectTimeout, onTimeout: () async {
-      if (logMessage != null) {
-        logMessage!('Device ${device.id} connection timed out');
+      if (connectionState != DeviceConnectionState.disconnected) {
+        if (logMessage != null) {
+          logMessage!('Device ${device.id} connection timed out');
+        }
+        await _connector.disconnect(deviceId: device.id);
       }
-      await _connector.disconnect(deviceId: device.id);
     });
 
     if (connectionState == DeviceConnectionState.connected) {
@@ -203,7 +217,7 @@ class BluetoothBleStompClient {
     if (readWriteReady == false) {
       if (logMessage != null) {
         logMessage!(
-            "Cannot read characteristic ${readCharacteristicUuid.toString()}: characteristics not found");
+            "Cannot read characteristic ${readCharacteristicUuid.toString()}: read characteristic not found");
       }
 
       return [];
@@ -260,7 +274,7 @@ class BluetoothBleStompClient {
     if (readWriteReady == false) {
       if (logMessage != null) {
         logMessage!(
-            "Cannot write characteristic ${readCharacteristicUuid.toString()}: characteristics not found");
+            "Cannot write characteristic ${readCharacteristicUuid.toString()}: write characteristic not found");
       }
 
       return;
