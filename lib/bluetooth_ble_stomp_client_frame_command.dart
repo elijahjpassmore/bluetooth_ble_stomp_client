@@ -15,7 +15,7 @@ enum BluetoothBleStompClientFrameCommand {
 
 /// The corresponding command value expected in the frame.
 extension BluetoothBleStompClientFrameCommandExtension
-on BluetoothBleStompClientFrameCommand {
+    on BluetoothBleStompClientFrameCommand {
   String get value {
     switch (this) {
       case BluetoothBleStompClientFrameCommand.send:
@@ -39,3 +39,15 @@ on BluetoothBleStompClientFrameCommand {
     }
   }
 }
+
+const Set<String> validBluetoothBleStompClientFrameCommandValues = {
+  'SEND',
+  'SUBSCRIBE',
+  'UNSUBSCRIBE',
+  'BEGIN',
+  'COMMIT',
+  'ABORT',
+  'ACK',
+  'NACK',
+  'DISCONNECT'
+};

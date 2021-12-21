@@ -6,16 +6,18 @@ import 'package:bluetooth_ble_stomp_client/ble/bluetooth_ble_stomp_client_device
 import 'package:bluetooth_ble_stomp_client/ble/bluetooth_ble_stomp_client_device_finder.dart';
 import 'package:bluetooth_ble_stomp_client/ble/bluetooth_ble_stomp_client_device_interactor.dart';
 import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_frame.dart';
+import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_frame_command.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 /// A simple BLE STOMP client.
 class BluetoothBleStompClient {
   /// A null response.
-  static List<int> nullResponse = [00];
+  static const List<int> nullResponse = [00];
 
   /// A warning response.
-  static List<int> warningResponse = [07];
+  static const List<int> warningResponse = [07];
 
   BluetoothBleStompClient(
       {required this.device,
@@ -73,6 +75,14 @@ class BluetoothBleStompClient {
   /// Convert bytes to a String.
   static String bytesToString({required List<int> bytes}) {
     return utf8.decode(bytes);
+  }
+
+  /// Compare the read response two another.
+  ///
+  /// At the moment, this is just a facade for listEquals.
+  static bool readResponseEquality(
+      {required List<int> one, required List<int> two}) {
+    return listEquals(one, two);
   }
 
   /// Discover all services on a device.
@@ -170,19 +180,43 @@ class BluetoothBleStompClient {
 
   /// Connect to the device.
   Future<bool> connectDevice(
-      {connectTimeout = const Duration(seconds: 12)}) async {
+      {prescanDuration = const Duration(seconds: 5),
+      timeoutDuration = const Duration(seconds: 5),
+      scanOffset = const Duration(milliseconds: 250)}) async {
     if (connectionState == DeviceConnectionState.connected) {
       if (logMessage != null) {
         logMessage!("Device ${device.id} already connected");
       }
     }
+
     await _connector.connect(
-        deviceId: device.id, service: serviceUuid, timeout: connectTimeout);
+        deviceId: device.id,
+        service: serviceUuid,
+        timeout: timeoutDuration,
+        prescan: prescanDuration);
+
+    /// Wait for the scan to stop.
+    ///
+    /// If the device starts the connection process, immediately stop the
+    /// future.
+    await Future.doWhile(() async {
+      if (connectionState == DeviceConnectionState.connecting) {
+        return false;
+      } else {
+        /// Don't flood with too many checks at once.
+        await Future.delayed(const Duration(milliseconds: 100));
+        return true;
+      }
+    }).timeout(prescanDuration, onTimeout: () {});
+
+    await Future.delayed(scanOffset);
 
     /// Keep the asynchronous method busy while the connection stream does not
     /// indicate that the device has been connected.
     await Future.doWhile(() async {
       if (connectionState == DeviceConnectionState.connected) {
+        return false;
+      } else if (connectionState == DeviceConnectionState.disconnected) {
         return false;
       } else {
         /// Don't flood with too many checks at once.
@@ -191,8 +225,9 @@ class BluetoothBleStompClient {
       }
 
       /// If the connection takes too long, time it out.
-    }).timeout(connectTimeout, onTimeout: () async {
-      if (connectionState != DeviceConnectionState.disconnected) {
+    }).timeout(timeoutDuration, onTimeout: () async {
+      if (connectionState != DeviceConnectionState.disconnected ||
+          connectionState != DeviceConnectionState.disconnecting) {
         if (logMessage != null) {
           logMessage!('Device ${device.id} connection timed out');
         }
@@ -213,7 +248,7 @@ class BluetoothBleStompClient {
   }
 
   /// Read from the read characteristic.
-  Future<List<int>> read({Duration? delay, int? attempts}) async {
+  Future<List<int>> read({Duration? delay}) async {
     if (readWriteReady == false) {
       if (logMessage != null) {
         logMessage!(
@@ -232,8 +267,8 @@ class BluetoothBleStompClient {
   }
 
   /// Check to see if the latest read response is null.
-  Future<bool> nullRead({Duration? delay, int? attempts}) async {
-    List<int> response = await read(delay: delay, attempts: attempts);
+  Future<bool> nullRead({Duration? delay}) async {
+    List<int> response = await read(delay: delay);
     if (bytesToString(bytes: response) == bytesToString(bytes: nullResponse)) {
       return true;
     }
@@ -242,8 +277,8 @@ class BluetoothBleStompClient {
   }
 
   /// Check to see if the latest read response is a warning.
-  Future<bool> warningRead({Duration? delay, int? attempts}) async {
-    List<int> response = await read(delay: delay, attempts: attempts);
+  Future<bool> warningRead({Duration? delay}) async {
+    List<int> response = await read(delay: delay);
     if (bytesToString(bytes: response) ==
         bytesToString(bytes: warningResponse)) {
       return true;
