@@ -2,6 +2,7 @@ library bluetooth_ble_stomp_client;
 
 import 'dart:convert';
 
+import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_frame_command.dart';
 import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_response_exception.dart';
 
 /// A STOMP frame.
@@ -17,7 +18,7 @@ class BluetoothBleStompClientFrame {
   BluetoothBleStompClientFrame(
       {required this.command, required this.headers, this.body}) {
     result =
-        constructFrameResult(receipt: command, headers: headers, body: body);
+        constructFrameResult(command: command, headers: headers, body: body);
   }
 
   /// Create a STOMP frame from bytes.
@@ -33,6 +34,11 @@ class BluetoothBleStompClientFrame {
           message: 'Cannot split frame');
     }
     command = lines[0];
+    if (validBluetoothBleStompClientFrameCommandValues.contains(command) ==
+        false) {
+      throw BluetoothBleStompClientResponseException(
+          message: 'Invalid frame command');
+    }
 
     int headerFrameBreak = 1;
     for (int i = 1; i < lines.length; i++) {
@@ -57,7 +63,7 @@ class BluetoothBleStompClientFrame {
     bodyReadable = body?.replaceAll('\u0000', '');
 
     result =
-        constructFrameResult(receipt: command, headers: headers, body: body);
+        constructFrameResult(command: command, headers: headers, body: body);
   }
 
   late final String command;
@@ -68,10 +74,10 @@ class BluetoothBleStompClientFrame {
 
   /// Construct thr result of a given receipt, headers and body.
   static String constructFrameResult(
-      {required String receipt,
+      {required String command,
       required Map<String, String> headers,
       String? body}) {
-    String result = '$receipt\n';
+    String result = '$command\n';
 
     for (String key in headers.keys) {
       result += ('$key:${headers[key]}\n');
