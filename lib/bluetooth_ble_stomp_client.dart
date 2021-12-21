@@ -170,14 +170,19 @@ class BluetoothBleStompClient {
 
   /// Connect to the device.
   Future<bool> connectDevice(
-      {connectTimeout = const Duration(seconds: 15)}) async {
+      {prescanDuration = const Duration(seconds: 5),
+      timeoutDuration = const Duration(seconds: 10)}) async {
     if (connectionState == DeviceConnectionState.connected) {
       if (logMessage != null) {
         logMessage!("Device ${device.id} already connected");
       }
     }
+
     await _connector.connect(
-        deviceId: device.id, service: serviceUuid, timeout: connectTimeout);
+        deviceId: device.id,
+        service: serviceUuid,
+        timeout: timeoutDuration,
+        prescan: prescanDuration);
 
     /// Keep the asynchronous method busy while the connection stream does not
     /// indicate that the device has been connected.
@@ -193,8 +198,9 @@ class BluetoothBleStompClient {
       }
 
       /// If the connection takes too long, time it out.
-    }).timeout(connectTimeout, onTimeout: () async {
-      if (connectionState != DeviceConnectionState.disconnected) {
+    }).timeout(timeoutDuration + prescanDuration, onTimeout: () async {
+      if (connectionState != DeviceConnectionState.disconnected ||
+          connectionState != DeviceConnectionState.disconnecting) {
         if (logMessage != null) {
           logMessage!('Device ${device.id} connection timed out');
         }
