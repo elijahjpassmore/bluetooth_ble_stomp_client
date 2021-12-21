@@ -40,7 +40,7 @@ extension BluetoothBleStompClientFrameCommandExtension
   }
 }
 
-Set<String> validBluetoothBleStompClientFrameCommandValues = {
+const Set<String> validBluetoothBleStompClientFrameCommandValues = {
   'SEND',
   'SUBSCRIBE',
   'UNSUBSCRIBE',

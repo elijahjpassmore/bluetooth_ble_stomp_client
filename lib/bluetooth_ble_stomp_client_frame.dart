@@ -22,7 +22,10 @@ class BluetoothBleStompClientFrame {
   }
 
   /// Create a STOMP frame from bytes.
-  BluetoothBleStompClientFrame.fromBytes({required List<int> bytes}) {
+  BluetoothBleStompClientFrame.fromBytes(
+      {required List<int> bytes,
+      Set<String> validCommands =
+          validBluetoothBleStompClientFrameCommandValues}) {
     String str = utf8.decode(bytes);
     if (str.isEmpty || str == '') {
       throw BluetoothBleStompClientResponseException(message: 'Frame is empty');
@@ -34,8 +37,7 @@ class BluetoothBleStompClientFrame {
           message: 'Cannot split frame');
     }
     command = lines[0];
-    if (validBluetoothBleStompClientFrameCommandValues.contains(command) ==
-        false) {
+    if (validCommands.contains(command) == false) {
       throw BluetoothBleStompClientResponseException(
           message: 'Invalid frame command');
     }
