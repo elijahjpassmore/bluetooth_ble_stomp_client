@@ -170,7 +170,7 @@ class BluetoothBleStompClient {
 
   /// Connect to the device.
   Future<bool> connectDevice(
-      {connectTimeout = const Duration(seconds: 12)}) async {
+      {connectTimeout = const Duration(seconds: 15)}) async {
     if (connectionState == DeviceConnectionState.connected) {
       if (logMessage != null) {
         logMessage!("Device ${device.id} already connected");
@@ -183,6 +183,8 @@ class BluetoothBleStompClient {
     /// indicate that the device has been connected.
     await Future.doWhile(() async {
       if (connectionState == DeviceConnectionState.connected) {
+        return false;
+      } else if (connectionState == DeviceConnectionState.disconnected) {
         return false;
       } else {
         /// Don't flood with too many checks at once.

@@ -31,7 +31,7 @@ class BluetoothBleStompClientDeviceConnector
       {required String deviceId,
       required Uuid service,
       Duration timeout = const Duration(seconds: 10),
-      Duration prescan = const Duration(seconds: 2)}) async {
+      Duration prescan = const Duration(seconds: 5)}) async {
     _logMessage('Start connecting to $deviceId');
     _connection = _ble
         .connectToAdvertisingDevice(
