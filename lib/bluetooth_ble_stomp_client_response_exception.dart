@@ -1,6 +1,6 @@
 library bluetooth_ble_stomp_client;
 
-/// An exception raised after bad authentication responses.
+/// An exception raised after bad frame creation or response.
 class BluetoothBleStompClientResponseException implements Exception {
   BluetoothBleStompClientResponseException({this.message});
 
