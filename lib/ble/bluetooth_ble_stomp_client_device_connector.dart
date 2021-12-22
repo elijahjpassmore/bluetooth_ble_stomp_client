@@ -24,10 +24,31 @@ class BluetoothBleStompClientDeviceConnector
   // ignore: cancel_subscriptions
   late StreamSubscription<ConnectionStateUpdate> _connection;
 
-  /// Connect to a device.
+  /// Connect to a device by first scanning.
   ///
   /// Does not use autoConnect.
   Future<void> connect(
+      {required String deviceId,
+      required Uuid service,
+      Duration timeout = const Duration(seconds: 5)}) async {
+    _logMessage('Start connecting to $deviceId');
+    _connection =
+        _ble.connectToDevice(id: deviceId, connectionTimeout: timeout).listen(
+      (update) {
+        latestUpdate = update;
+        _deviceConnectionController.add(update);
+        _logMessage(
+            'ConnectionState for device $deviceId : ${update.connectionState}');
+      },
+      onError: (Object e) =>
+          _logMessage('Connecting to device $deviceId resulted in error $e'),
+    );
+  }
+
+  /// Connect to a device by first scanning.
+  ///
+  /// Does not use autoConnect.
+  Future<void> connectToAdvertising(
       {required String deviceId,
       required Uuid service,
       Duration timeout = const Duration(seconds: 5),
