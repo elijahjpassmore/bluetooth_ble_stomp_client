@@ -25,6 +25,7 @@ class BluetoothBleStompClient {
       required this.writeCharacteristicUuid,
       this.stateCallback,
       this.logMessage,
+      this.status = BluetoothBleStompClientStompStatus.disconnected,
       this.actionDelay}) {
     _ble = FlutterReactiveBle();
     _connector = BluetoothBleStompClientDeviceConnector(
@@ -53,8 +54,7 @@ class BluetoothBleStompClient {
   late final BluetoothBleStompClientDeviceFinder _finder;
   BluetoothBleStompClientDeviceInteractor? _interactor;
 
-  BluetoothBleStompClientStompStatus status =
-      BluetoothBleStompClientStompStatus.disconnected;
+  BluetoothBleStompClientStompStatus status;
 
   /// Get the current state of the connection.
   Stream<ConnectionStateUpdate> get state => _connector.state;
