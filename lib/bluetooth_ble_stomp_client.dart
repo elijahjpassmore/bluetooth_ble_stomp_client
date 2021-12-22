@@ -134,6 +134,12 @@ class BluetoothBleStompClient {
             }
           }
           break;
+
+        /// When the device is either disconnecting, or already has
+        /// disconnected, make sure that the found data is reset.
+        case DeviceConnectionState.disconnecting:
+        case DeviceConnectionState.disconnected:
+          _resetData();
       }
     });
   }
