@@ -190,7 +190,7 @@ class BluetoothBleStompClient {
 
   /// Connect to a device.
   Future<bool> connectToDevice(
-      {timeoutDuration = const Duration(seconds: 5)}) async {
+      {timeoutDuration = const Duration(seconds: 10)}) async {
     if (connectionState == DeviceConnectionState.connected) {
       if (logMessage != null) {
         logMessage!("Device ${device.id} already connected");
@@ -233,9 +233,9 @@ class BluetoothBleStompClient {
   /// Connect to a device by first scanning to see if the device is still in
   /// range.
   Future<bool> connectDeviceAdvertising(
-      {prescanDuration = const Duration(seconds: 5),
-      timeoutDuration = const Duration(seconds: 5),
-      scanOffset = const Duration(milliseconds: 250)}) async {
+      {prescanDuration = const Duration(seconds: 10),
+      timeoutDuration = const Duration(seconds: 10),
+      scanOffset = const Duration(milliseconds: 100)}) async {
     if (connectionState == DeviceConnectionState.connected) {
       if (logMessage != null) {
         logMessage!("Device ${device.id} already connected");
