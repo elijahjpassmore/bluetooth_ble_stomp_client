@@ -182,8 +182,51 @@ class BluetoothBleStompClient {
     }
   }
 
-  /// Connect to the device.
-  Future<bool> connectDevice(
+  /// Connect to a device.
+  Future<bool> connectToDevice(
+      {timeoutDuration = const Duration(seconds: 5)}) async {
+    if (connectionState == DeviceConnectionState.connected) {
+      if (logMessage != null) {
+        logMessage!("Device ${device.id} already connected");
+      }
+    }
+
+    await _connector.connect(deviceId: device.id, service: serviceUuid);
+
+    /// Keep the asynchronous method busy while the connection stream does not
+    /// indicate that the device has been connected.
+    await Future.doWhile(() async {
+      if (connectionState == DeviceConnectionState.connected) {
+        return false;
+      } else if (connectionState == DeviceConnectionState.disconnected) {
+        return false;
+      } else {
+        /// Don't flood with too many checks at once.
+        await Future.delayed(const Duration(milliseconds: 100));
+        return true;
+      }
+
+      /// If the connection takes too long, time it out.
+    }).timeout(timeoutDuration, onTimeout: () async {
+      if (connectionState != DeviceConnectionState.disconnected ||
+          connectionState != DeviceConnectionState.disconnecting) {
+        if (logMessage != null) {
+          logMessage!('Device ${device.id} connection timed out');
+        }
+        await _connector.disconnect(deviceId: device.id);
+      }
+    });
+
+    if (connectionState == DeviceConnectionState.connected) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Connect to a device by first scanning to see if the device is still in
+  /// range.
+  Future<bool> connectDeviceAdvertising(
       {prescanDuration = const Duration(seconds: 5),
       timeoutDuration = const Duration(seconds: 5),
       scanOffset = const Duration(milliseconds: 250)}) async {
@@ -193,7 +236,7 @@ class BluetoothBleStompClient {
       }
     }
 
-    await _connector.connect(
+    await _connector.connectToAdvertising(
         deviceId: device.id,
         service: serviceUuid,
         timeout: timeoutDuration,
