@@ -30,7 +30,7 @@ class BluetoothBleStompClientDeviceConnector
   Future<void> connect(
       {required String deviceId,
       required Uuid service,
-      Duration timeout = const Duration(seconds: 5)}) async {
+      Duration timeout = const Duration(seconds: 10)}) async {
     _logMessage('Start connecting to $deviceId');
     _connection =
         _ble.connectToDevice(id: deviceId, connectionTimeout: timeout).listen(
@@ -51,8 +51,8 @@ class BluetoothBleStompClientDeviceConnector
   Future<void> connectToAdvertising(
       {required String deviceId,
       required Uuid service,
-      Duration timeout = const Duration(seconds: 5),
-      Duration prescan = const Duration(seconds: 5)}) async {
+      Duration timeout = const Duration(seconds: 10),
+      Duration prescan = const Duration(seconds: 10)}) async {
     _logMessage('Start connecting to $deviceId');
     _connection = _ble
         .connectToAdvertisingDevice(
