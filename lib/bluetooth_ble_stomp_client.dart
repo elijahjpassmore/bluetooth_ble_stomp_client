@@ -7,6 +7,7 @@ import 'package:bluetooth_ble_stomp_client/ble/bluetooth_ble_stomp_client_device
 import 'package:bluetooth_ble_stomp_client/ble/bluetooth_ble_stomp_client_device_interactor.dart';
 import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_frame.dart';
 import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_frame_command.dart';
+import 'package:bluetooth_ble_stomp_client/bluetooth_ble_stomp_client_stomp_status.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
@@ -53,6 +54,9 @@ class BluetoothBleStompClient {
   late final BluetoothBleStompClientDeviceConnector _connector;
   late final BluetoothBleStompClientDeviceFinder _finder;
   BluetoothBleStompClientDeviceInteractor? _interactor;
+
+  BluetoothBleStompClientStompStatus status =
+      BluetoothBleStompClientStompStatus.disconnected;
 
   /// Get the current state of the connection.
   Stream<ConnectionStateUpdate> get state => _connector.state;
